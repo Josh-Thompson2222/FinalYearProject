@@ -1,9 +1,23 @@
-# app/schemas.py
-from typing import Annotated
-from pydantic import BaseModel, EmailStr, constr, conint, Field
+from typing import Annotated, Optional, List
+from annotated_types import Ge, Le
+from pydantic import BaseModel, EmailStr, ConfigDict, StringConstraints
+# ---------- Reusable type aliases ----------
+NameStr = Annotated[str, StringConstraints(min_length=1, max_length=100)]
+Password = Annotated[str, StringConstraints(pattern=r"^S\d{7}$")]       # Password must start with Example pattern: S1234567
+CodeStr = Annotated[str, StringConstraints(min_length=1, max_length=32)]
+AgeInt = Annotated[int, Ge(0), Le(150)]
 
-class User(BaseModel):
-    user_id: int
-    name: constr(min_length=2, max_length=50)
-    email: EmailStr
-    age: conint(gt=18)
+
+# ---------- Users ----------
+
+class UserCreate(BaseModel):
+	name: NameStr
+	email: EmailStr
+	password_id: Password
+
+class UserRead(BaseModel):
+	model_config = ConfigDict(from_attributes=True)
+	id: int
+	name: NameStr
+	email: EmailStr
+	password_id: Password
