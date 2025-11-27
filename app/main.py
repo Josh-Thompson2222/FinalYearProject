@@ -1,49 +1,22 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.database import engine
+from app.models import Base
 
-users: list[User] = []
+#Replacing @app.on_event("startup")
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    yield
 
-@app.get("/hello")
-def hello():
-    return {"message": "Hello, World!"}
+app = FastAPI(lifespan=lifespan)
 
-@app.get("/api/users")
-def get_users():
-    return users
-
-#Get user by user_id to view all existing users
-@app.get("/api/users/{user_id}")
-def get_user(user_id: int):
-    for u in users:
-        if u.user_id == user_id:
-            return u
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-#User logs in for the first time creating an account
-@app.post("/api/users", status_code=status.HTTP_201_CREATED)
-def add_user(user: User):
-    if any(u.user_id == user.user_id for u in users):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="user_id already exists")
-    users.append(user)
-    return user
-
-@app.put("/api/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def update_user(user_id: int, updated_user: User):
-    for i, u in enumerate(users):
-        if u.user_id == user_id:
-            users[i] = updated_user
-            return
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with ID {user_id} not found")
-
-@app.delete("/api/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int):
-    for i, u in enumerate(users):
-        if u.user_id == user_id:
-            users.pop(i)
-            return
-
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with ID {user_id} not found")
+# CORS (add this block)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # dev-friendly; tighten in prod
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
