@@ -3,7 +3,7 @@ from annotated_types import Ge, Le
 from pydantic import BaseModel, EmailStr, ConfigDict, StringConstraints
 # ---------- Reusable type aliases ----------
 NameStr = Annotated[str, StringConstraints(min_length=1, max_length=100)]
-Password = Annotated[str, StringConstraints(pattern=r"^S\d{7}$")]       # Password must start with Example pattern: S1234567
+Password = Annotated[str, StringConstraints(pattern=r"^S\d{7}$")]       # Password must start with S and contain 7 characters. Example pattern: S1234567
 CodeStr = Annotated[str, StringConstraints(min_length=1, max_length=32)]
 AgeInt = Annotated[int, Ge(0), Le(150)]
 
