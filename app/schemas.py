@@ -21,3 +21,13 @@ class UserRead(BaseModel):
 	name: NameStr
 	email: EmailStr
 	password_id: Password
+
+
+# ---------- JSON Web Tokens schemas ----------
+
+class Token(BaseModel):			#Return to client after login
+	access_token: str
+	token_type: str = "bearer"
+
+class TokenData(BaseModel):						#TokenData is a structured Pydantic model that holds important fields (like user_id in my case or could be email_str), 
+	user_id: Optional[int] = None				#only used on back end, not returned to user
