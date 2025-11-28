@@ -1,45 +1,53 @@
-from fastapi import FastAPI, HTTPException, status
-from .schemas import User
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from .database import engine, get_db
+from .models import Base, UserDB
+from .schemas import UserRead, UserCreate
 
-users: list[User] = []
+#Replacing @app.on_event("startup")
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    yield
 
-@app.get("/hello")
-def hello():
-    return {"message": "Hello, World!"}
+app = FastAPI(lifespan=lifespan)
 
-@app.get("/api/users")
-def get_users():
-    return users
+# CORS (add this block)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # dev-friendly; tighten in prod
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.get("/api/users/{user_id}")
-def get_user(user_id: int):
-    for u in users:
-        if u.user_id == user_id:
-            return u
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-@app.post("/api/users", status_code=status.HTTP_201_CREATED)
-def add_user(user: User):
-    if any(u.user_id == user.user_id for u in users):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="user_id already exists")
-    users.append(user)
+@app.get("/api/users/{user_id}", response_model = UserRead)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.get(UserDB, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     return user
 
-@app.put("/api/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def update_user(user_id: int, updated_user: User):
-    for i, u in enumerate(users):
-        if u.user_id == user_id:
-            users[i] = updated_user
-            return
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with ID {user_id} not found")
+@app.get("/api/users", response_model=list[UserRead])
+def get_all_users(db: Session = Depends(get_db)):
+    users = db.query(UserDB).all()
+    return users
 
-@app.delete("/api/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int):
-    for i, u in enumerate(users):
-        if u.user_id == user_id:
-            users.pop(i)
-            return
 
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with ID {user_id} not found")
+@app.post("/api/users/", response_model = UserRead, status_code = status.HTTP_201_CREATED)
+def create_user(payload: UserCreate, db: Session = Depends(get_db)):
+    # create an ORM User instance from the Pydantic payload
+    user = UserDB(**payload.model_dump())
+    db.add(user)
+
+    try: 
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Email or Password already registered")
+    return user
