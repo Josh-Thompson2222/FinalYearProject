@@ -3,17 +3,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from passlib.context import CryptContext
 
 # JWT handling imports
-from jose import jwt 
-from datetime import datetime, timedelta
+from jose import jwt, JWTError
+from datetime import datetime, timedelta, timezone
 
 from .database import engine, get_db
 from .models import Base, UserDB
-from .schemas import UserRead, UserCreate, Token
+from .schemas import UserRead, UserCreate, Token, TokenData
 
 #Replacing @app.on_event("startup")
 
@@ -29,6 +30,9 @@ Secret_Key = "AdminJoshFYP_Secret"      #Key used to encode
 Algorithm = "HS256"                     #Hashing algorithm used to encode
 ACCESS_TOKEN_EXPIRE_MINUTES = 30        #How long the key is valid
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
+
 # CORS (add this block)
 app.add_middleware(
     CORSMiddleware,
@@ -36,6 +40,46 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def create_access_token(*, subject: str) -> str:
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode = {"sub": subject, "exp": expire}
+    return jwt.encode(to_encode, Secret_Key, algorithm=Algorithm)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, password_hash)
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(plain_password)
+
+def authenticate_user(db: Session, email: str, password: str) -> UserDB:
+    user = db.query(UserDB).filter(UserDB.email == email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+    if not verify_password(password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+    return user
+
+def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> UserDB:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        sub = payload.get("sub")
+        if not sub:
+            raise credentials_exception
+        token_data = TokenData(sub=sub)
+    except JWTError:
+        raise credentials_exception
+
+    user = db.query(UserDB).filter(UserDB.email == token_data.sub).first()
+    if not user:
+        raise credentials_exception
+    return user
 
 @app.get("/api/users/{user_id}", response_model = UserRead)
 def get_user(user_id: int, db: Session = Depends(get_db)):
@@ -53,8 +97,19 @@ def get_all_users(db: Session = Depends(get_db)):
 @app.post("/api/users/", response_model = UserRead, status_code = status.HTTP_201_CREATED)
 def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     # create an ORM User instance from the Pydantic payload
-    user = UserDB(**payload.model_dump())
+    user = UserDB()
+    user.name = payload.name
+    user.email = payload.email
+    user.password_id = payload.password_id
     db.add(user)
+    
+    try: 
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Email or Password already registered")
+    return user
 
 #create JWT token with an expiration time
 def create_access_token(data:dict):
@@ -75,12 +130,3 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     user = authenticate_user(form_data)
     access_token = create_access_token(data={"sub": user["email"]}) 
     return {"access_token": access_token, "token_type": "bearer"}
-
-
-    try: 
-        db.commit()
-        db.refresh(user)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Email or Password already registered")
-    return user
