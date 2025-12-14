@@ -127,18 +127,6 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: UserD
     db.commit()
     return
 
-#create JWT token with an expiration time
-#def create_access_token(data:dict):
- #   to_encode = data.copy()                                                                     #Copy data to avoid modifying the original
-  #  expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)                 #Set the token's expiration time
-   # to_encode.update({"exp": expire})                                                           #Add expiration time to the token payload
-    #return jwt.encode(to_encode, Secret_Key, algorithm=Algorithm)                               #Encode the token with the secret key and algorithm
 
-#def authenticate_user(form_data: OAuth2PasswordRequestForm = Depends()):
- #   email = form_data.email
-  #  password_id = form_data.password_id
-   # if UserDB.get(email) == password_id:
-    #    return {"email": email}
-    #raise HTTPException(status_code=401, detail="Incorrect email or password")
 
 
