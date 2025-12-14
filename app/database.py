@@ -14,12 +14,12 @@ load_dotenv(envfile, override=True)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
 SQL_ECHO = os.getenv("SQL_ECHO", "false").lower() == "true"
-RETRIES = int(os.getenv("DB_RETRIES", "10"))
-DELAY = float(os.getenv("DB_RETRY_DELAY", "1.5"))
+RETRIES = int(os.getenv("DB_RETRIES", "30"))
+DELAY = float(os.getenv("DB_RETRY_DELAY", "2.0"))
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
-# small retry (harmless for SQLite, useful for Postgres)
+# small retry 
 for _ in range(RETRIES):
     try:
         engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=SQL_ECHO,
