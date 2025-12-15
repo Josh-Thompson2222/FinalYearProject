@@ -33,7 +33,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30        #How long the key is valid
 pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 
-# CORS (add this block)
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], # dev-friendly; tighten in prod
@@ -41,18 +41,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+#Creates access token by taking subject (user's email) and encoding it with expiry time
 def create_access_token(*, subject: str) -> str:
     now = datetime.now(timezone.utc)
     expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode = {"sub": subject, "exp": expire}
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+#Plain password is the unencrypted password the user provides, password_hash is the hashed password stored in DB
 def verify_password(plain_password: str, password_hash: str) -> bool:
     return pwd_context.verify(plain_password, password_hash)
 
+#hashes the plain password before storing it in the DB
 def hash_password(plain_password: str) -> str:
     return pwd_context.hash(plain_password)
 
+#Authenticates user by checking email and password against DB records
 def authenticate_user(db: Session, email: str, password: str) -> UserDB:
     user = db.query(UserDB).filter(UserDB.email == email).first()
     if not user:
@@ -61,12 +65,14 @@ def authenticate_user(db: Session, email: str, password: str) -> UserDB:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
     return user
 
+#function will automatically receive a db session and the token from the request's Authorization header
 def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> UserDB:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    #Try to decode the JWT using the SECRET_KEY and ALGORITHM to extract the subject from the token's payload
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         sub = payload.get("sub")
@@ -81,6 +87,7 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
         raise credentials_exception
     return user
 
+#Get user by ID
 @app.get("/api/users/{user_id}", response_model = UserRead)
 def get_user(user_id: int, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user = db.get(UserDB, user_id)
@@ -88,12 +95,13 @@ def get_user(user_id: int, db: Session = Depends(get_db), current_user: UserDB =
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
+#Get list of all users
 @app.get("/api/users", response_model=list[UserRead])
 def get_all_users(db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     users = db.query(UserDB).all()
     return users
 
-
+#Create a new user and add to database
 @app.post("/api/users/", response_model = UserRead, status_code = status.HTTP_201_CREATED)
 def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     # create an ORM User instance from the Pydantic payload
@@ -112,6 +120,7 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail="Email or Password already registered")
     return user
 
+#Existing user login with email and password to receive JWT token type, bearer
 @app.post("/api/login", response_model=Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, email=form_data.username, password=form_data.password)

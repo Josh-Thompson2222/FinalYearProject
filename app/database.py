@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
 
-# Pick env file by APP_ENV (default dev)
+# Different configuration options, pick env file by APP_ENV (default dev)
 envfile = {
     "dev": ".env.dev",
     "docker": ".env.docker",
