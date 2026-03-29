@@ -2,3 +2,5 @@ __pycache__/
 .ipynb_checkpoints/
 *.pyc
 venv/
+
+models/tablet_model.keras
