@@ -42,3 +42,5 @@ typing-inspection==0.4.1
 typing_extensions==4.15.0
 uvicorn==0.38.0
 tensorflow-cpu==2.16.2
+Pillow==10.1.0
+numpy==1.26.4
