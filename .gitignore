@@ -3,4 +3,4 @@ __pycache__/
 *.pyc
 venv/
 
-models/tablet_model.kerasmodels/tablet_model.keras
+models/tablet_model.keras
