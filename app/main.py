@@ -15,6 +15,11 @@ from datetime import datetime, timedelta, timezone
 from .database import engine, get_db
 from .models import Base, UserDB
 from .schemas import UserRead, UserCreate, Token, TokenData
+from tensorflow.keras.models import load_model
+import os
+
+MODEL_PATH = os.getenv("MODEL_PATH", "models/tablet_model.keras")
+model = load_model(MODEL_PATH)
 
 #Replacing @app.on_event("startup")
 
