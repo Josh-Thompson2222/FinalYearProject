@@ -1,6 +1,6 @@
 from typing import Annotated, Optional, List
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
@@ -15,11 +15,19 @@ from datetime import datetime, timedelta, timezone
 from .database import engine, get_db
 from .models import Base, UserDB
 from .schemas import UserRead, UserCreate, Token, TokenData
+from PIL import Image
+import tensorflow as tf
 from tensorflow.keras.models import load_model
+import io
+import numpy as np
 import os
 
+IMG_SIZE = (224, 224) # Image size of ResNet50, which is the base of my model, so I need to resize input images to this size before feeding them into the model
+
+CLASS_NAMES = ["DayZinc", "Bactidol", "Bioflu", "Medicol"]
+
 MODEL_PATH = os.getenv("MODEL_PATH", "models/tablet_model.keras")
-model = load_model(MODEL_PATH)
+model = tf.keras.models.load_model(MODEL_PATH)
 
 #Replacing @app.on_event("startup")
 
@@ -31,9 +39,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 #Configuration for JWT
-SECRET_KEY = "AdminJoshFYP_Secret"      #Key used to encode
-ALGORITHM = "HS256"                     #Hashing algorithm used to encode
-ACCESS_TOKEN_EXPIRE_MINUTES = 30        #How long the key is valid
+SECRET_KEY = os.getenv("JWT_SECRET", "AdminJoshFYP_Secret")                                 #Key used to encode
+ALGORITHM = os.getenv("JWT_ALG", "HS256")                                                   #Hashing algorithm used to encode
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))           #How long the key is valid
 
 pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
@@ -141,6 +149,54 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: UserD
     db.commit()
     return
 
+# Predict endpoint
 
+@app.post("/api/predict")
+async def predict_tablet(file: UploadFile = File(...)):
+    # Validate file type (helpful error messages for the frontend)
+    if not file.content_type or file.content_type.lower() not in ("image/jpeg", "image/jpg", "image/png"):
+        raise HTTPException(status_code=400, detail="Upload a JPG or PNG image using form field 'file'.")
 
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty upload.")
 
+    # Load image from bytes
+    try:
+        img = Image.open(io.BytesIO(raw)).convert("RGB")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image file.")
+
+    # Resize to model input size
+    img = img.resize(IMG_SIZE)
+
+    # Convert to float32 array and normalize to match Rescaling(1./255)
+    x = np.array(img, dtype=np.float32) / 255.0
+
+    # Add batch dimension -> (1, 224, 224, 3)
+    x = np.expand_dims(x, axis=0)
+
+    # Predict
+    try:
+        preds = model.predict(x, verbose=0)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Model inference failed: {str(e)}")
+
+    preds = np.squeeze(preds)
+
+    # Safety checks
+    if preds.ndim != 1 or len(preds) != len(CLASS_NAMES):
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected model output shape. Got {preds.shape}, expected ({len(CLASS_NAMES)},)."
+        )
+
+    idx = int(np.argmax(preds))
+    confidence = float(preds[idx])
+
+    return {
+        "predicted_class": CLASS_NAMES[idx],
+        "confidence": confidence,
+        "class_index": idx,
+        "all_confidences": [float(p) for p in preds.tolist()],
+    }
