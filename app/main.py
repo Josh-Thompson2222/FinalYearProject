@@ -205,7 +205,7 @@ async def predict_tablet(file: UploadFile = File(...)):
 # ---------- Tablet Schedule Endpoints ----------
 
 # Create a new tablet schedule for the current user
-@app.post("/api/schedules", response_model=ScheduleRead, status_code=status.HTTP_201_CREATED)
+@app.post("/api/schedules/", response_model=ScheduleRead, status_code=status.HTTP_201_CREATED)
 def create_schedule(
     payload: ScheduleCreate,
     db: Session = Depends(get_db),
@@ -234,7 +234,7 @@ def create_schedule(
 
 
 # Get all schedules belonging to the current user
-@app.get("/api/schedules/me", response_model=list[ScheduleRead])
+@app.get("/api/schedules/me/", response_model=list[ScheduleRead])
 def get_my_schedules(
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user),
@@ -244,7 +244,7 @@ def get_my_schedules(
 
 
 # Update a specific schedule (only allowed if it belongs to current user)
-@app.put("/api/schedules/{schedule_id}", response_model=ScheduleRead)
+@app.put("/api/schedules/{schedule_id}/", response_model=ScheduleRead)
 def update_schedule(
     schedule_id: int,
     payload: ScheduleUpdate,
@@ -279,7 +279,7 @@ def update_schedule(
 
 
 # Delete a specific schedule (only allowed if it belongs to current user)
-@app.delete("/api/schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/api/schedules/{schedule_id}/", status_code=status.HTTP_204_NO_CONTENT)
 def delete_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),

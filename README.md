@@ -52,7 +52,7 @@ All schedule endpoints require a valid JWT (`Authorization: Bearer <token>`).
 
 ### Create a schedule
 ```http
-POST /api/schedules
+POST /api/schedules/
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -78,7 +78,7 @@ Response `201 Created`:
 
 ### Get my schedules
 ```http
-GET /api/schedules/me
+GET /api/schedules/me/
 Authorization: Bearer <token>
 ```
 
@@ -87,7 +87,7 @@ Response `200 OK`: array of schedule objects (see above).
 ### Update a schedule
 Only supply fields you want to change.
 ```http
-PUT /api/schedules/{schedule_id}
+PUT /api/schedules/{schedule_id}/
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -101,7 +101,7 @@ Returns `404` if not found, `403` if the schedule belongs to a different user.
 
 ### Delete a schedule
 ```http
-DELETE /api/schedules/{schedule_id}
+DELETE /api/schedules/{schedule_id}/
 Authorization: Bearer <token>
 ```
 
