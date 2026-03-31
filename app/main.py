@@ -13,8 +13,8 @@ from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
 
 from .database import engine, get_db
-from .models import Base, UserDB
-from .schemas import UserRead, UserCreate, Token, TokenData
+from .models import Base, UserDB, TabletScheduleDB
+from .schemas import UserRead, UserCreate, Token, TokenData, ScheduleCreate, ScheduleRead, ScheduleUpdate
 from PIL import Image
 import tensorflow as tf
 from tensorflow.keras.models import load_model
