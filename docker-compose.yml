@@ -9,6 +9,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U \"$${POSTGRES_USER:-app}\" -d \"$${POSTGRES_DB:-appdb}\""]
       interval: 5s
+      timeout: 5s
       retries: 10
     restart: unless-stopped
 
@@ -22,6 +23,8 @@ services:
         condition: service_healthy
     ports:
       - "8005:8000"
+    volumes:
+      - ./:/app
     restart: unless-stopped
 
 volumes:
