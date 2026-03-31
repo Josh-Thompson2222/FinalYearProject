@@ -13,8 +13,8 @@ from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
 
 from .database import engine, get_db
-from .models import Base, UserDB
-from .schemas import UserRead, UserCreate, Token, TokenData
+from .models import Base, UserDB, TabletScheduleDB
+from .schemas import UserRead, UserCreate, Token, TokenData, ScheduleCreate, ScheduleUpdate, ScheduleRead
 from PIL import Image
 import tensorflow as tf
 from tensorflow.keras.models import load_model
@@ -200,3 +200,98 @@ async def predict_tablet(file: UploadFile = File(...)):
         "class_index": idx,
         "all_confidences": [float(p) for p in preds.tolist()],
     }
+
+
+# ---------- Tablet Schedule Endpoints ----------
+
+# Create a new tablet schedule for the current user
+@app.post("/api/schedules", response_model=ScheduleRead, status_code=status.HTTP_201_CREATED)
+def create_schedule(
+    payload: ScheduleCreate,
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
+):
+    """
+    Create a tablet schedule for the authenticated user.
+
+    Request body example:
+        {
+            "morning": ["Medicol", "DayZinc"],
+            "afternoon": ["Bioflu"],
+            "evening": ["Bactidol"]
+        }
+    """
+    schedule = TabletScheduleDB(
+        user_id=current_user.id,
+        morning=payload.morning,
+        afternoon=payload.afternoon,
+        evening=payload.evening,
+    )
+    db.add(schedule)
+    db.commit()
+    db.refresh(schedule)
+    return schedule
+
+
+# Get all schedules belonging to the current user
+@app.get("/api/schedules/me", response_model=list[ScheduleRead])
+def get_my_schedules(
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
+):
+    """Return all tablet schedules for the authenticated user."""
+    return db.query(TabletScheduleDB).filter(TabletScheduleDB.user_id == current_user.id).all()
+
+
+# Update a specific schedule (only allowed if it belongs to current user)
+@app.put("/api/schedules/{schedule_id}", response_model=ScheduleRead)
+def update_schedule(
+    schedule_id: int,
+    payload: ScheduleUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
+):
+    """
+    Update a tablet schedule by ID. Only the owner may update it.
+
+    Request body example (only supply fields you want to change):
+        {
+            "morning": ["DayZinc"],
+            "evening": ["Medicol", "Bactidol"]
+        }
+    """
+    schedule = db.get(TabletScheduleDB, schedule_id)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    if schedule.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this schedule")
+
+    if payload.morning is not None:
+        schedule.morning = payload.morning
+    if payload.afternoon is not None:
+        schedule.afternoon = payload.afternoon
+    if payload.evening is not None:
+        schedule.evening = payload.evening
+
+    db.commit()
+    db.refresh(schedule)
+    return schedule
+
+
+# Delete a specific schedule (only allowed if it belongs to current user)
+@app.delete("/api/schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_schedule(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
+):
+    """Delete a tablet schedule by ID. Only the owner may delete it."""
+    schedule = db.get(TabletScheduleDB, schedule_id)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    if schedule.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this schedule")
+
+    db.delete(schedule)
+    db.commit()
+    return
