@@ -96,7 +96,7 @@ export default function SchedulesScreen({ token }) {
         placeholderTextColor="#6b7280"
       />
       <Button title="Delete (DELETE)" onPress={deleteSchedule} />
-
+{/**/}
       <Text style={styles.label}>Response</Text>
       <ScrollView style={styles.output}>
         <Text selectable style={styles.outputText}>{output}</Text>
@@ -107,7 +107,7 @@ export default function SchedulesScreen({ token }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#fff", gap: 10 },
-  title: { fontSize: 22, fontWeight: "700", color: "#111827" },
+  title: { fontSize: 22, fontWeight: "700", color: "#111827", textAlign: "center", marginBottom: 20 },
   label: { fontWeight: "600", color: "#111827" },
   input: {
     borderWidth: 1,
