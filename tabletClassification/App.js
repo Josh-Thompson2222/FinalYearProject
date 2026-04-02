@@ -25,7 +25,7 @@ export default function App() {
           {(props) => <AuthScreen {...props} setToken={setToken} />}
         </Stack.Screen>
 
-        <Stack.Screen name="Schedules" options={{ title: "Schedules" }}>
+        <Stack.Screen name="Schedules" options={{ title: "Schedule Handler" }}>
           {(props) => <SchedulesScreen {...props} token={token} />}
         </Stack.Screen>
       </Stack.Navigator>
