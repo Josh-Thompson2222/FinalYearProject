@@ -21,7 +21,7 @@ export default function App() {
           {(props) => <HomeScreen {...props} token={token} setToken={setToken}/>}
         </Stack.Screen>
 
-        <Stack.Screen name="Auth" options={{ title: "Login or Sign Up" }}>
+        <Stack.Screen name="Auth" options={{ title: "Authentication" }}>
           {(props) => <AuthScreen {...props} setToken={setToken} />}
         </Stack.Screen>
 
