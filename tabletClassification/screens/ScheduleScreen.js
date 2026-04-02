@@ -15,19 +15,23 @@ export default function SchedulesScreen({ token }) {
   }
 
   async function createSchedule() {
-    try {
-      setOutput("Creating schedule...");
-      const res = await fetch(`${API_BASE_URL}/api/schedules/`, {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ morning, afternoon, evening }),
-      });
-      const text = await res.text();
-      setOutput(text);
-    } catch (err) {
-      setOutput(String(err));
-    }
+  try {
+    setOutput("Creating schedule...");
+    const res = await fetch(`${API_BASE_URL}/api/schedules/`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        morning: morning ? [morning] : [],
+        afternoon: afternoon ? [afternoon] : [],
+        evening: evening ? [evening] : [],
+      }),
+    });
+    const text = await res.text();
+    setOutput(text);
+  } catch (err) {
+    setOutput(String(err));
   }
+}
 
   async function loadMySchedules() {
     try {
