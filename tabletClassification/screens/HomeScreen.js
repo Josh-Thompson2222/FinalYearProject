@@ -1,5 +1,5 @@
 import React from "react";
-import { SafeAreaView, Text, Button, StyleSheet, View } from "react-native";
+import { SafeAreaView, Text, Button, StyleSheet, View, Image } from "react-native";
 
 export default function HomeScreen({ navigation, token, setToken }) {
   function logout() {
@@ -11,6 +11,8 @@ export default function HomeScreen({ navigation, token, setToken }) {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Tablet Image Classification</Text>
+
+      <Image source={require("../assets/HomeScreenImage.jpg")} style={styles.homeImage} />
 
       <View style={styles.group}>
         <Button title="Login or Sign Up" onPress={() => navigation.navigate("Auth")} />
@@ -35,7 +37,15 @@ export default function HomeScreen({ navigation, token, setToken }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#fff", gap: 12 },
-  title: { fontSize: 22, fontWeight: "700", color: "#111827", textAlign: "center" },
-  group: { gap: 10 },
+  title: { fontSize: 22, fontWeight: "700", color: "#111827", textAlign: "center", marginTop: 20 },
+  homeImage: {
+    width: "100%",
+    height: 250,
+    borderRadius: 12,
+    resizeMode: "cover",
+    alignSelf: "center",
+    marginTop: 50,
+  },
+  group: { gap: 10, marginTop: 200 },
   note: { color: "#374151", fontStyle: "italic", textAlign: "center" },
 });
