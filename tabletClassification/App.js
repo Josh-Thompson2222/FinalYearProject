@@ -1,20 +1,34 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from "react";
+import { StatusBar } from "expo-status-bar";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+
+import HomeScreen from "./screens/HomeScreen";
+import AuthScreen from "./screens/AuthScreen";
+import SchedulesScreen from "./screens/ScheduleScreen";
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
+  const [token, setToken] = useState(null);
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <StatusBar style="dark" />
+
+      <Stack.Navigator>
+        <Stack.Screen name="Home" options={{ title: "Home" }}>
+          {(props) => <HomeScreen {...props} token={token} setToken={setToken}/>}
+        </Stack.Screen>
+
+        <Stack.Screen name="Auth" options={{ title: "Login or Sign Up" }}>
+          {(props) => <AuthScreen {...props} setToken={setToken} />}
+        </Stack.Screen>
+
+        <Stack.Screen name="Schedules" options={{ title: "Schedules" }}>
+          {(props) => <SchedulesScreen {...props} token={token} />}
+        </Stack.Screen>
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
