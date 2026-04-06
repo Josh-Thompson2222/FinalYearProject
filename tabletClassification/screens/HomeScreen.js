@@ -24,6 +24,8 @@ export default function HomeScreen({ navigation, token, setToken }) {
         />
 
         {token ? <Button title="Logout" onPress={logout} color="#b91c1c" /> : null}
+
+        <Button title="Predict Tablet" onPress={() => navigation.navigate("Prediction")} disabled={!token} />
       </View>
 
       {!token ? (
