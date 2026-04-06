@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import HomeScreen from "./screens/HomeScreen";
 import AuthScreen from "./screens/AuthScreen";
-import SchedulesScreen from "./screens/ScheduleScreen";
+import SchedulesScreen from "./screens/ScheduleStack";
 
 const Stack = createNativeStackNavigator();
 
@@ -25,8 +25,8 @@ export default function App() {
           {(props) => <AuthScreen {...props} setToken={setToken} />}
         </Stack.Screen>
 
-        <Stack.Screen name="Schedules" options={{ title: "Schedule Handler" }}>
-          {(props) => <SchedulesScreen {...props} token={token} />}
+        <Stack.Screen name="Schedules" options={{ headerShown: false }}>
+          {(props) => <SchedulesStack {...props} token={token} />}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
