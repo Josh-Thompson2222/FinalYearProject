@@ -1,11 +1,75 @@
 import React, { useEffect, useState } from "react";
-import { SafeAreaView, Text, TextInput, Button, StyleSheet, ScrollView, View } from "react-native";
+import { SafeAreaView, Text, TextInput, Button, StyleSheet, ScrollView, View, Pressable } from "react-native";
 import { API_BASE_URL } from "../config";
 
+function newDose() {
+  return { name: "", qty: "1" }; // keep qty as string for TextInput
+}
+
+function toDoseItems(doses) {
+  return doses
+    .map((d) => ({
+      name: (d.name || "").trim(),
+      qty: Number(d.qty) || 1,
+    }))
+    .filter((d) => d.name.length > 0);
+}
+
+function DoseList({ title, doses, setDoses }) {
+  function updateDose(index, patch) {
+    setDoses((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
+  }
+
+  function addDose() {
+    setDoses((prev) => [...prev, newDose()]);
+  }
+
+  function removeDose(index) {
+    setDoses((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+
+      {doses.map((dose, idx) => (
+        <View key={`${title}-${idx}`} style={styles.row}>
+          <View style={{ flex: 1, gap: 6 }}>
+            <TextInput
+              style={styles.input}
+              value={dose.name}
+              onChangeText={(t) => updateDose(idx, { name: t })}
+              placeholder="Tablet name (e.g. Bioflu)"
+              placeholderTextColor="#6b7280"
+            />
+            <TextInput
+              style={styles.input}
+              value={dose.qty}
+              onChangeText={(t) => updateDose(idx, { qty: t })}
+              keyboardType="number-pad"
+              placeholder="Qty"
+              placeholderTextColor="#6b7280"
+            />
+          </View>
+
+          <Pressable
+            onPress={() => removeDose(idx)}
+            style={({ pressed }) => [styles.removeBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={styles.removeBtnText}>Remove</Text>
+          </Pressable>
+        </View>
+      ))}
+
+      <Button title="+ Add tablet" onPress={addDose} />
+    </View>
+  );
+}
+
 export default function CreateScheduleScreen({ token, navigation }) {
-  const [morning, setMorning] = useState("");
-  const [afternoon, setAfternoon] = useState("");
-  const [evening, setEvening] = useState("");
+  const [morningDoses, setMorningDoses] = useState([newDose()]);
+  const [afternoonDoses, setAfternoonDoses] = useState([newDose()]);
+  const [eveningDoses, setEveningDoses] = useState([newDose()]);
 
   const [hasSchedule, setHasSchedule] = useState(false);
   const [output, setOutput] = useState("");
@@ -21,11 +85,11 @@ export default function CreateScheduleScreen({ token, navigation }) {
       const exists = Array.isArray(data) && data.length > 0;
       setHasSchedule(exists);
 
-      if (exists) {
-        setOutput("You already have a schedule. Go to 'View / Edit My Schedule' to update or delete it.");
-      } else {
-        setOutput("No schedule found. You can create one now.");
-      }
+      setOutput(
+        exists
+          ? "You already have a schedule. Go to 'View / Edit My Schedule' to update or delete it."
+          : "No schedule found. You can create one now."
+      );
     } catch (err) {
       setOutput(String(err));
     }
@@ -38,13 +102,19 @@ export default function CreateScheduleScreen({ token, navigation }) {
         return;
       }
 
-      setOutput("Creating schedule...");
-
       const payload = {
-        morning: morning ? [morning] : [],
-        afternoon: afternoon ? [afternoon] : [],
-        evening: evening ? [evening] : [],
+        morning: toDoseItems(morningDoses),
+        afternoon: toDoseItems(afternoonDoses),
+        evening: toDoseItems(eveningDoses),
       };
+
+      // basic validation so users can't submit an empty schedule by accident
+      if (payload.morning.length + payload.afternoon.length + payload.evening.length === 0) {
+        setOutput("Please add at least one tablet before creating the schedule.");
+        return;
+      }
+
+      setOutput("Creating schedule...");
 
       const res = await fetch(`${API_BASE_URL}/api/schedules/`, {
         method: "POST",
@@ -78,16 +148,13 @@ export default function CreateScheduleScreen({ token, navigation }) {
         </View>
       ) : (
         <>
-          <Text style={styles.label}>Morning (single tablet name)</Text>
-          <TextInput style={styles.input} value={morning} onChangeText={setMorning} />
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 14, paddingBottom: 12 }}>
+            <DoseList title="Morning" doses={morningDoses} setDoses={setMorningDoses} />
+            <DoseList title="Afternoon" doses={afternoonDoses} setDoses={setAfternoonDoses} />
+            <DoseList title="Evening" doses={eveningDoses} setDoses={setEveningDoses} />
 
-          <Text style={styles.label}>Afternoon</Text>
-          <TextInput style={styles.input} value={afternoon} onChangeText={setAfternoon} />
-
-          <Text style={styles.label}>Evening</Text>
-          <TextInput style={styles.input} value={evening} onChangeText={setEvening} />
-
-          <Button title="Create Schedule" onPress={createSchedule} />
+            <Button title="Create Schedule" onPress={createSchedule} />
+          </ScrollView>
         </>
       )}
 
@@ -103,7 +170,37 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#fff", gap: 10 },
   label: { fontWeight: "600", color: "#111827" },
   note: { color: "#374151" },
-  input: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 8, padding: 10, color: "#111827" },
-  output: { minHeight: 80, maxHeight: 160, borderWidth: 1, borderColor: "#d1d5db", borderRadius: 8, padding: 10},
+
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
+
+  row: { flexDirection: "row", gap: 10, alignItems: "center" },
+  input: {
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: "#fff",
+    color: "#111827",
+  },
+
+  removeBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ef4444",
+    alignSelf: "stretch",
+    justifyContent: "center",
+  },
+  removeBtnText: { color: "#b91c1c", fontWeight: "600" },
+
+  output: {
+    minHeight: 70,
+    maxHeight: 140,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 8,
+    padding: 10,
+  },
   outputText: { color: "#111827" },
 });
