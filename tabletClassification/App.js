@@ -7,6 +7,7 @@ import HomeScreen from "./screens/HomeScreen";
 import AuthScreen from "./screens/AuthScreen";
 import SchedulesStack from "./screens/SchedulesStack";
 import PredictionScreen from "./screens/PredictionScreen";
+import IntakeLogScreen from "./screens/IntakeLogScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -33,6 +34,11 @@ export default function App() {
         <Stack.Screen name="Prediction" options={{ title: "Tablet Prediction screen" }}>
           {(props) => <PredictionScreen {...props} token={token} />}
         </Stack.Screen>
+
+        <Stack.Screen name="IntakeLog" options={{ title: "Intake Log" }}>
+          {(props) => <IntakeLogScreen {...props} token={token} />}
+        </Stack.Screen>
+
       </Stack.Navigator>
     </NavigationContainer>
   );
