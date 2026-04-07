@@ -63,3 +63,16 @@ class ScheduleUpdate(BaseModel):
 	afternoon: Optional[List[DoseItem]] = None
 	evening: Optional[List[DoseItem]] = None
 
+class IntakeCreate(BaseModel):
+	tablet_name: str
+	time_of_day: str
+	qty_taken: int = Field(default=1, ge=1)
+
+class IntakeRead(BaseModel):
+	model_config = ConfigDict(from_attributes=True)
+	id: int
+	user_id: int
+	tablet_name: str
+	time_of_day: str
+	qty_taken: int
+	taken_at: datetime
