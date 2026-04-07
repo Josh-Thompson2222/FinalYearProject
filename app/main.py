@@ -13,8 +13,8 @@ from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
 
 from .database import engine, get_db
-from .models import Base, UserDB, TabletScheduleDB
-from .schemas import UserRead, UserCreate, Token, TokenData, ScheduleCreate, ScheduleRead, ScheduleUpdate
+from .models import Base, UserDB, TabletScheduleDB, IntakeLogDB
+from .schemas import UserRead, UserCreate, Token, TokenData, ScheduleCreate, ScheduleRead, ScheduleUpdate, IntakeCreate, IntakeRead
 from PIL import Image
 import tensorflow as tf
 from tensorflow.keras.models import load_model
@@ -257,3 +257,30 @@ def delete_schedule(schedule_id: int, db: Session = Depends(get_db), current_use
     db.delete(schedule)
     db.commit()
     return
+
+# ---------- Intake Logs Endpoints ----------
+
+@app.post("/api/intake/", response_model=IntakeRead, status_code=status.HTTP_201_CREATED)
+def create_intake(payload: IntakeCreate, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
+    log = IntakeLogDB(
+        user_id=current_user.id,
+        tablet_name=payload.tablet_name.strip(),
+        time_of_day=payload.time_of_day,
+        qty_taken=payload.qty_taken,
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
+
+@app.get("/api/intake/today/", response_model=list[IntakeRead])
+def get_today_intake(db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
+    # Simple version: “today” in UTC. (Good enough for now; can add timezone later)
+    start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    return (
+        db.query(IntakeLogDB)
+        .filter(IntakeLogDB.user_id == current_user.id)
+        .filter(IntakeLogDB.taken_at >= start)
+        .order_by(IntakeLogDB.taken_at.desc())
+        .all()
+    )
