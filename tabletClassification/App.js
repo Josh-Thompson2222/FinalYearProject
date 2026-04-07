@@ -30,7 +30,7 @@ export default function App() {
           {(props) => <SchedulesStack {...props} token={token} />}
         </Stack.Screen>
 
-        <Stack.Screen name="Prediction" options={{ title: "Predict Tablet" }}>
+        <Stack.Screen name="Prediction" options={{ title: "Tablet Prediction screen" }}>
           {(props) => <PredictionScreen {...props} token={token} />}
         </Stack.Screen>
       </Stack.Navigator>
