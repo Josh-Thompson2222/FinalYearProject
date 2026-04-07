@@ -203,14 +203,17 @@ async def predict_tablet(file: UploadFile = File(...)):
 
 # ---------- Tablet Schedule Endpoints ----------
 
+def doseitems_to_json(items):
+    return [i.model_dump() for i in (items or [])]
+
 # Create a new tablet schedule for the current user
 @app.post("/api/schedules/", response_model=ScheduleRead, status_code=status.HTTP_201_CREATED)
 def create_schedule(payload: ScheduleCreate, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     schedule = TabletScheduleDB(
         user_id=current_user.id,
-        morning=payload.morning,
-        afternoon=payload.afternoon,
-        evening=payload.evening
+        morning=doseitems_to_json(payload.morning),
+        afternoon=doseitems_to_json(payload.afternoon),
+        evening=doseitems_to_json(payload.evening)
     )
     db.add(schedule)
     db.commit()
@@ -233,11 +236,11 @@ def update_schedule(schedule_id: int, payload: ScheduleUpdate, db: Session = Dep
         raise HTTPException(status_code=403, detail="Not authorised to edit this schedule")
     
     if payload.morning is not None:
-        schedule.morning = payload.morning
+        schedule.morning = doseitems_to_json(payload.morning)
     if payload.afternoon is not None:
-        schedule.afternoon = payload.afternoon
+        schedule.afternoon = doseitems_to_json(payload.afternoon)
     if payload.evening is not None:
-        schedule.evening = payload.evening
+        schedule.evening = doseitems_to_json(payload.evening)
     
     db.commit()
     db.refresh(schedule)
