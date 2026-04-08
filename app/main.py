@@ -13,8 +13,8 @@ from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
 
 from .database import engine, get_db
-from .models import Base, UserDB, TabletScheduleDB
-from .schemas import UserRead, UserCreate, Token, TokenData, ScheduleCreate, ScheduleRead, ScheduleUpdate
+from .models import Base, UserDB, TabletScheduleDB, IntakeLogDB
+from .schemas import UserRead, UserCreate, Token, TokenData, ScheduleCreate, ScheduleRead, ScheduleUpdate, IntakeCreate, IntakeRead
 from PIL import Image
 import tensorflow as tf
 from tensorflow.keras.models import load_model
@@ -203,14 +203,17 @@ async def predict_tablet(file: UploadFile = File(...)):
 
 # ---------- Tablet Schedule Endpoints ----------
 
+def doseitems_to_json(items):
+    return [i.model_dump() for i in (items or [])]
+
 # Create a new tablet schedule for the current user
 @app.post("/api/schedules/", response_model=ScheduleRead, status_code=status.HTTP_201_CREATED)
 def create_schedule(payload: ScheduleCreate, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     schedule = TabletScheduleDB(
         user_id=current_user.id,
-        morning=payload.morning,
-        afternoon=payload.afternoon,
-        evening=payload.evening
+        morning=doseitems_to_json(payload.morning),
+        afternoon=doseitems_to_json(payload.afternoon),
+        evening=doseitems_to_json(payload.evening)
     )
     db.add(schedule)
     db.commit()
@@ -233,11 +236,11 @@ def update_schedule(schedule_id: int, payload: ScheduleUpdate, db: Session = Dep
         raise HTTPException(status_code=403, detail="Not authorised to edit this schedule")
     
     if payload.morning is not None:
-        schedule.morning = payload.morning
+        schedule.morning = doseitems_to_json(payload.morning)
     if payload.afternoon is not None:
-        schedule.afternoon = payload.afternoon
+        schedule.afternoon = doseitems_to_json(payload.afternoon)
     if payload.evening is not None:
-        schedule.evening = payload.evening
+        schedule.evening = doseitems_to_json(payload.evening)
     
     db.commit()
     db.refresh(schedule)
@@ -254,3 +257,30 @@ def delete_schedule(schedule_id: int, db: Session = Depends(get_db), current_use
     db.delete(schedule)
     db.commit()
     return
+
+# ---------- Intake Logs Endpoints ----------
+
+@app.post("/api/intake/", response_model=IntakeRead, status_code=status.HTTP_201_CREATED)
+def create_intake(payload: IntakeCreate, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
+    log = IntakeLogDB(
+        user_id=current_user.id,
+        tablet_name=payload.tablet_name.strip(),
+        time_of_day=payload.time_of_day,
+        qty_taken=payload.qty_taken,
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
+
+@app.get("/api/intake/today/", response_model=list[IntakeRead])
+def get_today_intake(db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
+    # Simple version: “today” in UTC. (Good enough for now; can add timezone later)
+    start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    return (
+        db.query(IntakeLogDB)
+        .filter(IntakeLogDB.user_id == current_user.id)
+        .filter(IntakeLogDB.taken_at >= start)
+        .order_by(IntakeLogDB.taken_at.desc())
+        .all()
+    )

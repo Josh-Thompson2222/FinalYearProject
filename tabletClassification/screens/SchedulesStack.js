@@ -10,7 +10,7 @@ const Stack = createNativeStackNavigator();
 export default function SchedulesStack({ token }) {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="Schedules" options={{ title: "Schedule" }}>
+      <Stack.Screen name="SchedulesHome" options={{ title: "Schedule" }}>
         {(props) => <ScheduleScreen {...props} />}
       </Stack.Screen>
 

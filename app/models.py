@@ -14,6 +14,8 @@ class UserDB(Base):
 	email: Mapped[str] = mapped_column(unique=True, nullable=False)
 	password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
+	intake_logs: Mapped[List["IntakeLogDB"]] = relationship("IntakeLogDB", back_populates="owner")
+
 	schedules: Mapped[List["TabletScheduleDB"]] = relationship("TabletScheduleDB", back_populates="owner", cascade="all, delete-orphan")
 
 
@@ -29,3 +31,17 @@ class TabletScheduleDB(Base):
 	updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 	owner: Mapped["UserDB"] = relationship("UserDB", back_populates="schedules")
+
+class IntakeLogDB(Base):
+    __tablename__ = "intake_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+
+    tablet_name: Mapped[str] = mapped_column(String, nullable=False)
+    time_of_day: Mapped[str] = mapped_column(String, nullable=False)  # "morning"|"afternoon"|"evening"
+    qty_taken: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    taken_at: Mapped[datetime] = mapped_column( DateTime(timezone=True), server_default=func.now(), nullable=False )
+
+    owner: Mapped["UserDB"] = relationship("UserDB", back_populates="intake_logs")
