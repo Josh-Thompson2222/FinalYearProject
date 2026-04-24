@@ -17,7 +17,7 @@ from .models import Base, UserDB, TabletScheduleDB, IntakeLogDB
 from .schemas import UserRead, UserCreate, Token, TokenData, ScheduleCreate, ScheduleRead, ScheduleUpdate, IntakeCreate, IntakeRead
 from PIL import Image
 import tensorflow as tf
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model  # type: ignore
 import io
 import numpy as np
 import os
@@ -27,13 +27,17 @@ IMG_SIZE = (224, 224) # Image size of ResNet50, which is the base of my model, s
 CLASS_NAMES = ["DayZinc", "Bactidol", "Bioflu", "Medicol"]
 
 MODEL_PATH = os.getenv("MODEL_PATH", "models/tablet_model.keras")
-model = tf.keras.models.load_model(MODEL_PATH)
+try:
+    model = tf.keras.models.load_model(MODEL_PATH)
+except Exception:
+    model = None
 
 #Replacing @app.on_event("startup")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    import app.database as _db
+    Base.metadata.create_all(bind=_db.engine)
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -67,6 +71,7 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
 
 #hashes the plain password before storing it in the DB
 def hash_password(plain_password: str) -> str:
+    plain_password = plain_password[:72]
     return pwd_context.hash(plain_password)
 
 #Authenticates user by checking email and password against DB records
