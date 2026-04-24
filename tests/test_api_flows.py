@@ -96,3 +96,67 @@ def test_predict_accepts_image_and_returns_probs(client):
     assert "predicted_class" in data
     assert "confidence" in data
     assert len(data["all_confidences"]) == 4
+
+
+def test_get_user_not_found(client):
+    token = signup_and_login(client, email="notfound@example.com")
+    r = client.get("/api/users/99999", headers=auth_headers(token))
+    assert r.status_code == 404
+
+
+def test_delete_user(client):
+    token = signup_and_login(client, email="delete@example.com")
+    r = client.get("/api/users/1", headers=auth_headers(token))
+    user_id = r.json()["id"]
+    r = client.delete(f"/api/users/{user_id}", headers=auth_headers(token))
+    assert r.status_code == 204
+
+
+def test_login_wrong_password(client):
+    signup_and_login(client, email="wrongpass@example.com")
+    r = client.post(
+        "/api/login",
+        data={"username": "wrongpass@example.com", "password": "wrongpassword"},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    assert r.status_code == 401
+
+
+def test_login_wrong_email(client):
+    r = client.post(
+        "/api/login",
+        data={"username": "doesnotexist@example.com", "password": "pass123"},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    assert r.status_code == 401
+
+
+def test_duplicate_user_registration(client):
+    signup_and_login(client, email="duplicate@example.com")
+    r = client.post("/api/users/", json={"name": "Josh", "email": "duplicate@example.com", "password": "pass123"})
+    assert r.status_code == 409
+
+
+def test_predict_invalid_file_type(client):
+    files = {"file": ("test.txt", b"not an image", "text/plain")}
+    r = client.post("/api/predict", files=files)
+    assert r.status_code == 400
+
+
+def test_schedule_not_found(client):
+    token = signup_and_login(client, email="schnotfound@example.com")
+    r = client.put("/api/schedules/99999/", json={"morning": []}, headers=auth_headers(token))
+    assert r.status_code == 404
+
+
+def test_delete_schedule_not_found(client):
+    token = signup_and_login(client, email="delschnotfound@example.com")
+    r = client.delete("/api/schedules/99999/", headers=auth_headers(token))
+    assert r.status_code == 404
+
+
+def test_get_all_users(client):
+    token = signup_and_login(client, email="allusers@example.com")
+    r = client.get("/api/users", headers=auth_headers(token))
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)
